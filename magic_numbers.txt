@@ -1,0 +1,5 @@
+ELF: 0x7f454C46 // 0x7f + "ELF"
+COFF: 0x14c
+DOS: 0x5A4D // "MZ" -> Mark Zbikowski
+
+PE-Image-Signature: 0x00004550 // "PE\0\0"
