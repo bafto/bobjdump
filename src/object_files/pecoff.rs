@@ -1,21 +1,8 @@
 use crate::binary_file::*;
-use std::io::Error;
+use crate::object_files::*;
 
-pub enum ObjectFile {
-    ELF(ELFFile),
-    COFF(COFFFile),
-    PECOFF(PECOFFFile),
-    NOTOBJ,
-}
-
-const ELF_MN: u32 = 0x7f454C46;
-const COFF_MN: u32 = 0x14c;
-// const DOS_MN: u16 = 0x5A4D;
 const PE_IMG_MN: u32 = 0x00004550;
-
-pub struct ELFFile {}
-
-pub struct COFFFile {}
+// const DOS_MN: u16 = 0x5A4D;
 
 pub struct PECOFFFile {
     pub is_img: bool,
@@ -125,41 +112,20 @@ Characteristics:        {:#X}{}\
     }
 }
 
-pub fn read_object_file(path: String) -> Result<ObjectFile, Error> {
-    let mut bin_file = match BinaryFile::from_path(path) {
-        Ok(f) => f,
-        Err(err) => return Err(err),
-    };
-
-    let magic_number = bin_file.read_u32();
-    match magic_number {
-        ELF_MN => parse_elf_file(&mut bin_file),
-        COFF_MN => parse_coff_file(&mut bin_file),
-        _ => parse_pecoff_file(&mut bin_file),
-    }
-}
-
-fn parse_elf_file(_file: &mut BinaryFile) -> Result<ObjectFile, Error> {
-    Ok(ObjectFile::ELF(ELFFile {}))
-}
-
-fn parse_coff_file(_file: &mut BinaryFile) -> Result<ObjectFile, Error> {
-    Ok(ObjectFile::COFF(COFFFile {}))
-}
-
-fn parse_pecoff_file(file: &mut BinaryFile) -> Result<ObjectFile, Error> {
-    // check microsoft PE
+pub fn parse_pecoff_file(file: &mut BinaryFile) -> Result<ObjectFile, Error> {
     // assume image file
     file.move_fp_to(0x3C);
     let mut off = file.read_u32() as usize;
+
     if off > file.bytes.len() {
+        // if the offset is invalid, prevent the crash
         off = 0
     }
     file.move_fp_to(off);
-    let img = file.read_u32() == PE_IMG_MN;
+    let img = file.read_u32() == PE_IMG_MN; // check if it is an image file
 
     if !img {
-        file.move_fp_to(0)
+        file.move_fp_to(0) // for non-image files, the header is at the file start, for image file we are already at the header position
     }
 
     // read PE header
