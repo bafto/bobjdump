@@ -20,8 +20,9 @@
 				}
 			},
 			"args": [
-				"./test/test.o",
-				"-f"
+				"./test/main.o",
+				"-f",
+				"-h"
 			],
 			"cwd": "${workspaceFolder}"
 		},

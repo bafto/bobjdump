@@ -70,24 +70,57 @@ impl PeHeader {
         }
     }
 
+    fn get_characteristics_string(&self) -> String {
+        let mut result = String::new();
+        for i in 0..16 {
+            if (self.Characteristics >> i) % 2 == 1 {
+                result.push_str(match i {
+                    0 => "\nIMAGE_FILE_RELOCS_STRIPPED",
+                    1 => "\nIMAGE_FILE_EXECUTABLE_IMAGE",
+                    2 => "\nIMAGE_FILE_LINE_NUMS_STRIPPED",
+                    3 => "\nIMAGE_FILE_LOCAL_SYMS_STRIPPED",
+                    4 => "\nIMAGE_FILE_AGGRESSIVE_WS_TRIM",
+                    5 => "\nIMAGE_FILE_LARGE_ADDRESS_AWARE",
+                    6 => "\nreserved for future use",
+                    7 => "\nIMAGE_FILE_BYTES_REVERSED_LO",
+                    8 => "\nIMAGE_FILE_32BIT_MACHINE",
+                    9 => "\nIMAGE_FILE_DEBUG_STRIPPED",
+                    10 => "\nIMAGE_FILE_REMOVABLE_RUN_ FROM_SWAP",
+                    11 => "\nIMAGE_FILE_NET_RUN_FROM_SWAP",
+                    12 => "\nIMAGE_FILE_SYSTEM",
+                    13 => "\nIMAGE_FILE_DLL",
+                    14 => "\nIMAGE_FILE_UP_SYSTEM_ONLY",
+                    15 => "\nIMAGE_FILE_BYTES_REVERSED_HI",
+                    _ => "unknown",
+                })
+            }
+        }
+        result
+            .strip_prefix(" | ")
+            .unwrap_or(result.as_str())
+            .to_string()
+    }
+
     pub fn to_string(&self) -> String {
         format!(
-            "
-Machine: 				{}
-NumberOfSections: 		{}
-TimeDateStamp: 			{}
-PointerToSymbolTable: 	{}
-NumberOfSymbols: 		{}
-SizeOfOptionalHeader:	{}
-Characteristics: 		{}
+            "\
+Machine:                {}
+NumberOfSections:       {}
+TimeDateStamp:          {}
+PointerToSymbolTable:   {:#X}
+NumberOfSymbols:        {}
+SizeOfOptionalHeader:   {:#X}
+Characteristics:        {:#X}{}\
 		",
             self.get_machine_string(),
             self.NumberOfSections,
-            self.TimeDateStamp,
+            chrono::NaiveDateTime::from_timestamp(self.TimeDateStamp.into(), 0).to_string(),
             self.PointerToSymbolTable,
             self.NumberOfSymbols,
             self.SizeOfOptionalHeader,
-            self.Characteristics
+            self.Characteristics,
+            self.get_characteristics_string()
+                .replace("\n", "\n                        ")
         )
     }
 }
@@ -106,11 +139,11 @@ pub fn read_object_file(path: String) -> Result<ObjectFile, Error> {
     }
 }
 
-fn parse_elf_file(file: &mut BinaryFile) -> Result<ObjectFile, Error> {
+fn parse_elf_file(_file: &mut BinaryFile) -> Result<ObjectFile, Error> {
     Ok(ObjectFile::ELF(ELFFile {}))
 }
 
-fn parse_coff_file(file: &mut BinaryFile) -> Result<ObjectFile, Error> {
+fn parse_coff_file(_file: &mut BinaryFile) -> Result<ObjectFile, Error> {
     Ok(ObjectFile::COFF(COFFFile {}))
 }
 
@@ -125,9 +158,21 @@ fn parse_pecoff_file(file: &mut BinaryFile) -> Result<ObjectFile, Error> {
     file.move_fp_to(off);
     let img = file.read_u32() == PE_IMG_MN;
 
+    if !img {
+        file.move_fp_to(0)
+    }
+
     // read PE header
-    let bytes = file.read_bytes(28);
-    let header = unsafe { std::ptr::read(bytes.as_ptr() as *const _) };
+    let header = PeHeader {
+        Machine: file.read_u16(),
+        NumberOfSections: file.read_u16(),
+        TimeDateStamp: file.read_u32(),
+        PointerToSymbolTable: file.read_u32(),
+        NumberOfSymbols: file.read_u32(),
+        SizeOfOptionalHeader: file.read_u16(),
+        Characteristics: file.read_u16(),
+    };
+
     Ok(ObjectFile::PECOFF(PECOFFFile {
         is_img: img,
         dos_header: Some(DosHeader {}),
