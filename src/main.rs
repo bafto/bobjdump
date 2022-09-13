@@ -67,6 +67,18 @@ fn main() {
                 ObjectFile::PECOFF(obj) => obj.pe_header.to_string(),
                 ObjectFile::NOTOBJ => "".to_string(),
             }
+        );
+        println!(
+            "{}",
+            match &obj_file {
+                ObjectFile::ELF(_) => "".to_string(),
+                ObjectFile::COFF(_) => "".to_string(),
+                ObjectFile::PECOFF(obj) => match &obj.img_header {
+                    Some(header) => header.to_string(),
+                    None => "".to_string(),
+                },
+                ObjectFile::NOTOBJ => "".to_string(),
+            }
         )
     }
 }

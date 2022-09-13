@@ -39,10 +39,16 @@ impl BinaryFile {
         self.bytes[self.index - n..self.index].to_vec()
     }
 
+    pub fn read_u8(&mut self) -> u8 {
+        self.read_bytes(1)[0]
+    }
     pub fn read_u16(&mut self) -> u16 {
         LittleEndian::read_u16(self.read_bytes(2).as_slice())
     }
     pub fn read_u32(&mut self) -> u32 {
         LittleEndian::read_u32(self.read_bytes(4).as_slice())
+    }
+    pub fn read_u64(&mut self) -> u64 {
+        LittleEndian::read_u64(self.read_bytes(8).as_slice())
     }
 }
